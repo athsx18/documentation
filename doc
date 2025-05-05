@@ -1,0 +1,87 @@
+. Objective
+Log gas concentration readings from an MQ6 sensor into InfluxDB using an ESP32, MQTT, and Telegraf.
+
+2. Components
+MQ6 Gas Sensor (LPG, propane, isobutane detection)
+
+ESP32 Microcontroller
+
+MQTT Broker (e.g., Mosquitto)
+
+Telegraf (metrics agent)
+
+InfluxDB (time-series database)
+
+3. MQ6 to ESP32 Wiring
+swift
+Copy
+Edit
+MQ6        →     ESP32
+VCC        →     3.3V
+GND        →     GND
+A0         →     GPIO 34 (or any ADC1 pin)
+D0         →     Not required
+4. ESP32 Firmware
+Reads analog value from MQ6.
+
+Converts it to gas concentration (approximate PPM).
+
+Publishes it over MQTT as a JSON payload.
+
+Example JSON:
+
+json
+Copy
+Edit
+{
+  "sensor": "MQ6",
+  "ppm": 346,
+  "location": "lab"
+}
+MQTT Topic: gas_sensor/ppm
+
+5. MQTT Broker
+Install Mosquitto (or similar)
+
+ESP32 publishes to gas_sensor/ppm
+
+Telegraf subscribes to the same topic
+
+6. Telegraf Configuration
+Edit /etc/telegraf/telegraf.conf:
+
+MQTT Input Plugin
+ini
+Copy
+Edit
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://localhost:1883"]
+  topics = ["gas_sensor/ppm"]
+  data_format = "json"
+InfluxDB Output Plugin
+ini
+Copy
+Edit
+[[outputs.influxdb_v2]]
+  urls = ["http://localhost:8086"]
+  token = "your-token"
+  organization = "your-org"
+  bucket = "your-bucket"
+7. InfluxDB
+Create a bucket (e.g., mq6_data)
+
+Use organization and token as in Telegraf config
+
+Use InfluxDB UI or CLI to query data
+
+8. Query Example
+flux
+Copy
+Edit
+from(bucket: "mq6_data")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "mqtt_consumer")
+9. Optional Visualization
+Use Grafana to visualize PPM levels
+
+Connect Grafana to InfluxDB as a data source
